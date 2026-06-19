@@ -2,79 +2,95 @@
 
 Notes, key takeaways, and snippets from the **Anthropic - Claude Code in Action** course.
 
-- **Course Link:** [Anthropic Course Platform](https://courses.anthropic.com/)
+- **Course Link:** [Anthropic Course Platform](https://anthropic.skilljar.com/claude-code-in-action)
 - **Status:** Completed ✅
 
 ---
 
 ## 💡 Key Insights & Takeaways
 
-### 1. What is coding agent?
+### 1. What is a Coding Agent?
 ![alt text](image.png)
 
-Put it simply coding agent is an llm that can perform tool calling to get the context it needed in order to fulfill user goal.
+Simply put, a coding agent is an LLM that performs tool calls to acquire context and execute actions to fulfill user goals.
 
-Important: Claude code doesn't index your codebase outside (like cursor i guess), it rely strongly on its tool use to explore the codebase. This help with security 
+> [!IMPORTANT]
+> Claude Code does **not** pre-index your codebase (unlike Cursor). It relies entirely on its active tool use to explore and inspect files, which significantly improves security.
 
-Claude default tool:
+#### Claude's Default Tools:
 ![alt text](image-1.png)
 
-UI (playwright) tool:
+#### UI (Playwright) Tool:
 ![alt text](image-2.png)
 
+### #snippet: Add Playwright MCP
+Add the Playwright MCP server to Claude Code:
 ```bash
 claude mcp add playwright npx @playwright/mcp@latest
 ```
-### Setup
 
-You can find full setup instructions here: https://code.claude.com/docs/en/quickstart
+---
 
-In short, you'll need to do the following:
+## 🚀 Setup & Installation
 
-Install Claude Code
-MacOS, Linux, WSL: curl -fsSL https://claude.ai/install.sh | bash
-Windows PowerShell: irm https://claude.ai/install.ps1 | iex
-Windows Command Prompt (cmd.exe): curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
-MacOS (Homebrew): brew install --cask claude-code
-After installation, run claude at your terminal. The first time you run this command you will be prompted to pick a color theme for the terminal and authenticate with your claude.ai credentials
-If you get an error that claude isn't found after installing, or you hit a network or permissions error, see Troubleshoot installation issues in the docs.
+You can find full setup instructions here: [Claude Code Quickstart](https://code.claude.com/docs/en/quickstart)
 
-Using Claude Code through Amazon Bedrock, Google Cloud Vertex AI, or Microsoft Foundry? See third-party provider setup for additional setup instructions.
-
-
-
-### Basic Interaction
-
-/init to start the project 
-/memory to add things to the memory 
-
-important: 
-Double escape to rewind to old context in case you made a mistake or make too many debug interaction that might pollute the context
-
-
-we can make custom command in like in "snippets\.claude\commands\write_tests.md"
-Custom commands can accept arguments using the $ARGUMENTS placeholder. This makes them much more flexible and reusable.
-then after that we can use it like this
+### #snippet: Install on macOS, Linux, WSL
 ```bash
-/write_tests the use-auth.ts file in the hooks directory 
+curl -fsSL https://claude.ai/install.sh | bash
 ```
 
+### #snippet: Install on Windows (PowerShell)
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
 
-To extent claude tool, we can use mcp like
-Open the .claude/settings.local.json file and add the server to the allow array like in example
-"./snippets/.claude/settings.local.json"
+### #snippet: Install on Windows (cmd.exe)
+```cmd
+curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
 
+### #snippet: Install on macOS (Homebrew)
+```bash
+brew install --cask claude-code
+```
 
+After installation, run `claude` in your terminal. You will be prompted to pick a color theme and authenticate.
 
-### Github action
-run this in claude to set up 
+---
+
+## 🛠️ Basic Interaction & Custom Commands
+
+- `/init` — Initialize the project context.
+- `/memory` — Add guidelines/rules to project memory.
+
+> [!TIP]
+> Press **Double Escape** to rewind/undo the context if a mistake was made or if debugging commands polluted the chat history.
+
+### Custom Commands
+We can define custom commands in `.claude/commands/` (e.g., `.claude/commands/write_tests.md`).
+Custom commands can accept arguments using the `$ARGUMENTS` placeholder for flexibility.
+
+#### #snippet: Execute Custom Command
+Run a custom test-writing command on a target file:
+```bash
+/write_tests the use-auth.ts file in the hooks directory
+```
+
+---
+
+## 🔗 GitHub Actions Integration
+
+### #snippet: Initialize GitHub App
+Run this interactive setup helper in the Claude Code CLI:
+```bash
 /install-github-app
+```
+Once set up, Claude Code can handle pull requests and respond when mentioned (e.g., tagging `@claude`) on GitHub.
 
-
-Then claude can handle pull request, and mentioning (calling @claude) in github
-
-Note: in yml file might need to enable these following
-
+### #snippet: GitHub Action MCP Configuration
+Example configuration to enable in your workflow `.yml` file:
+```yaml
 mcp_config: |
   {
     "mcpServers": {
@@ -89,15 +105,59 @@ mcp_config: |
     }
   }
 
-  allowed_tools: "Bash(npm:*),Bash(sqlite3:*),mcp__playwright__browser_snapshot,mcp__playwright__browser_click,..."
+allowed_tools: "Bash(npm:*),Bash(sqlite3:*),mcp__playwright__browser_snapshot,mcp__playwright__browser_click,..."
+```
 
+---
 
-### Hooks
+## 🪝 Tool Hooks
+
+Hooks allow you to run automated scripts before or after Claude Code invokes tools.
 
 ![alt text](image-3.png)
 
-Run command before or after some tool calling. 
-
-usual tool call data
+Example tool call data structure:
 ![alt text](image-4.png)
 
+### Pre-Hook: Prevent Reading Sensitive Files
+An example pre-hook is in `snippets/hooks/read_hook.js`. This prevents the agent from reading sensitive files (e.g., `.env`, credentials, passwords).
+
+#### #snippet: PreToolUse Config
+Add the pre-hook configuration to `settings.local.json`:
+```json
+"hooks": {
+    "PreToolUse": [
+        {
+            "matcher": "Read",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node $PWD/hooks/read_hook.js"
+                }
+            ]
+        }
+    ]
+}
+```
+
+### Post-Hook: TypeScript Compile Check
+An example post-hook is in `snippets/hooks/type_check.js`. This triggers a `tsc --noEmit` check after a file is modified.
+
+#### #snippet: PostToolUse Config
+Add the post-hook configuration to `settings.local.json`:
+```json
+"hooks": {
+    "PostToolUse": [
+        {
+            "matcher": "Write|Edit|MultiEdit",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "node $PWD/hooks/type_check.js"
+                }
+            ]
+        }
+    ]
+}
+```
+This runs `tsc --noEmit` after any file modification and outputs compiler errors to `stderr`.
